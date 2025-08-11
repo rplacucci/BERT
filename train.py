@@ -199,10 +199,9 @@ if os.path.isfile(checkpoint_path):
     else:  
         model.load_state_dict(ckpt["model"])  
 
-    # load optimizer, scheduler & sampler
+    # load optimizer, scheduler
     optimizer.load_state_dict(ckpt["optimizer"])  
-    scheduler.load_state_dict(ckpt["scheduler"])  
-    sampler.load_state_dict(ckpt["sampler"])
+    scheduler.load_state_dict(ckpt["scheduler"])
 
     # restore bookkeeping
     start_step = ckpt["step"] + 1  
@@ -222,6 +221,8 @@ ckpt_steps = 1000
 save_steps = 100000
 
 for step in range(start_step, total_steps):
+    if distributed:
+        sampler.set_epoch(step)
     
     # train model
     model.train()
@@ -279,7 +280,6 @@ for step in range(start_step, total_steps):
                     "model": model.module.state_dict() if distributed else model.state_dict(),
                     "optimizer": optimizer.state_dict(),
                     "scheduler": scheduler.state_dict(),
-                    "sampler": sampler.state_dict(),
                     "loss": loss,
                 }
             print(f"Saving checkpoint to {out_dir}")
@@ -347,7 +347,7 @@ torch.cuda.empty_cache()
 
 if distributed:
     torch.cuda.set_device(local_rank)
-    dist.barrier(device_ids=[local_rank])
+    dist.barrier()
     destroy_process_group()
 
 if master_process:
