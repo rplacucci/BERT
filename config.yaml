@@ -1,0 +1,54 @@
+tiny:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 2
+  embed_size: 128
+  ff_size: 512
+  n_layers: 2
+  dropout: 0.1
+
+mini:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 4
+  embed_size: 256
+  ff_size: 1024
+  n_layers: 4
+  dropout: 0.1
+
+small:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 4
+  embed_size: 512
+  ff_size: 2048
+  n_layers: 4
+  dropout: 0.1
+
+medium:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 8
+  embed_size: 512
+  ff_size: 2048
+  n_layers: 8
+  dropout: 0.1
+
+base:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 12
+  embed_size: 768
+  ff_size: 3072
+  n_layers: 12
+  dropout: 0.1
+
+large:
+  n_segments: 2
+  max_len: 512
+  attn_heads: 16
+  embed_size: 1024
+  ff_size: 4096
+  n_layers: 24
+  dropout: 0.1
+  

@@ -7,6 +7,7 @@ from transformers.utils import logging as hf_logging
 hf_logging.set_verbosity_error() 
 
 import time
+import yaml
 import argparse
 import subprocess
 from model import BERT, BERTLM
@@ -26,6 +27,7 @@ from huggingface_hub import login
 
 # Config argparser
 parser = argparse.ArgumentParser(description="Pre-train BERT on Wikipedia with distributed processes")
+parser.add_argument("--bert_config", type=str, default="tiny", help="Size of BERT model (tiny, mini, small, medium, base, or large)")
 parser.add_argument("--hf_token", type=str, help="Hugging Face token to access private dataset")
 args = parser.parse_args()
 
@@ -65,16 +67,10 @@ tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 vocab_size = tokenizer.vocab_size
 
 # Config model
-bert = BERT(
-    vocab_size=vocab_size,
-    n_segments=2,
-    max_len=512,
-    attn_heads=12,
-    embed_size=768,
-    ff_size=3072,
-    n_layers=12,
-    dropout=0.1
-)
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+bert = BERT(vocab_size=vocab_size, **config[args.bert_config])
 
 model = BERTLM(bert=bert, vocab_size=vocab_size)
 model.to(device)
@@ -95,7 +91,7 @@ time.sleep(0.5)
 # Calculate gradient accumulation steps
 batch_size = 64
 max_len = 512
-total_batch_size = 256 * 512 * 2
+total_batch_size = 256 * 512
 assert total_batch_size % (batch_size * max_len * world_size) == 0, "total_batch_size must be divisible by (batch_size * max_len * world_size)"
 grad_accum_steps = total_batch_size // (batch_size * max_len * world_size)
 if master_process:
@@ -153,9 +149,9 @@ scheduler = LinearWarmupLinearDecay(optimizer=optimizer, lr_max=lr, warmup_steps
 criterion = torch.nn.NLLLoss(ignore_index=-100)
 
 # Config tensorboard and directories for logging/saving
-out_dir = "./models/bert-110M-wikipedia-en-v2"
-run_dir = "./runs/bert-110M-wikipedia-en-v2"
-pfs_dir = "/lambda/nfs/lambda-fs/"
+out_dir = f"./models/bert-{args.bert_config}-wikipedia-en"
+run_dir = f"./runs/bert-{args.bert_config}-wikipedia-en-v2"
+pfs_dir = None  # "/lambda/nfs/lambda-fs/"
 
 if master_process:
     writer = SummaryWriter(run_dir)
@@ -167,21 +163,22 @@ if distributed:
     dist.barrier()
 
 # Merge directories in the root disk to the persistent file system
-if master_process:
-    subprocess.run([
-        "rsync", "-av", "--info=progress2", 
-        "./models/", 
-        os.path.join(pfs_dir, "models/")
-    ], check=True)
+if pfs_dir is not None:
+    if master_process:
+        subprocess.run([
+            "rsync", "-av", "--info=progress2", 
+            "./models/", 
+            os.path.join(pfs_dir, "models/")
+        ], check=True)
 
-    subprocess.run([
-        "rsync", "-av", "--info=progress2", 
-        "./runs/", 
-        os.path.join(pfs_dir, "runs/")
-    ], check=True)
+        subprocess.run([
+            "rsync", "-av", "--info=progress2", 
+            "./runs/", 
+            os.path.join(pfs_dir, "runs/")
+        ], check=True)
 
-if distributed:
-    dist.barrier()
+    if distributed:
+        dist.barrier()
 
 # Resume from checkpoint if available
 checkpoint_path = os.path.join(out_dir, "ckpt.pt")  
@@ -286,17 +283,18 @@ for step in range(start_step, total_steps):
             torch.save(checkpoint, checkpoint_path)
 
             # merge
-            subprocess.run([
-                "rsync", "-av", "--info=progress2", 
-                "./models/", 
-                os.path.join(pfs_dir, "models/")
-            ], check=True)
+            if pfs_dir is not None:
+                subprocess.run([
+                    "rsync", "-av", "--info=progress2", 
+                    "./models/", 
+                    os.path.join(pfs_dir, "models/")
+                ], check=True)
 
-            subprocess.run([
-                "rsync", "-av", "--info=progress2", 
-                "./runs/", 
-                os.path.join(pfs_dir, "runs/")
-            ], check=True)
+                subprocess.run([
+                    "rsync", "-av", "--info=progress2", 
+                    "./runs/", 
+                    os.path.join(pfs_dir, "runs/")
+                ], check=True)
 
         if distributed:
             dist.barrier()
@@ -308,17 +306,18 @@ for step in range(start_step, total_steps):
             torch.save(model.module.state_dict() if distributed else model.state_dict(), os.path.join(out_dir, f"model_{step:06d}.pth"))
             
             # merge
-            subprocess.run([
-                "rsync", "-av", "--info=progress2", 
-                "./models/", 
-                os.path.join(pfs_dir, "models/")
-            ], check=True)
+            if pfs_dir is not None:
+                subprocess.run([
+                    "rsync", "-av", "--info=progress2", 
+                    "./models/", 
+                    os.path.join(pfs_dir, "models/")
+                ], check=True)
 
-            subprocess.run([
-                "rsync", "-av", "--info=progress2", 
-                "./runs/", 
-                os.path.join(pfs_dir, "runs/")
-            ], check=True)
+                subprocess.run([
+                    "rsync", "-av", "--info=progress2", 
+                    "./runs/", 
+                    os.path.join(pfs_dir, "runs/")
+                ], check=True)
 
         if distributed:
             dist.barrier()            

@@ -1,6 +1,7 @@
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import argparse
+import yaml
 import time
 import torch
 import evaluate
@@ -22,6 +23,13 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 parser = argparse.ArgumentParser(description="Fine-tune BERT on a GLUE task with distributed training")
 
 parser.add_argument(
+    "--bert_config",
+    type=str,
+    default="tiny",
+    help="Size of BERT model (tiny, mini, small, medium, base, or large)"
+)
+
+parser.add_argument(
     "--task_name",
     type=str,
     default="qqp",
@@ -38,7 +46,7 @@ parser.add_argument(
 parser.add_argument(
     "--n_epochs",
     type=int,
-    default=3,
+    default=4,
     help="Number of training epochs"
 )
 
@@ -78,20 +86,13 @@ if master_process:
     print("vocab size:", vocab_size)
 
 # Load pretrained model
-bert = BERT(
-    vocab_size=vocab_size,
-    n_segments=2,
-    max_len=512,
-    attn_heads=12,
-    embed_size=768,
-    ff_size=3072,
-    n_layers=12,
-    dropout=0.1
-)
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
 
+bert = BERT(vocab_size=vocab_size, **config[args.bert_config])
 bertlm = BERTLM(bert, vocab_size)
 
-model_dir = "models/bert-110M-wikipedia-en"
+model_dir = f"./models/bert-{args.bert_config}-wikipedia-en"
 checkpoint_path = os.path.join(model_dir, "ckpt.pt") 
 
 ckpt = torch.load(checkpoint_path, map_location=device)
@@ -189,13 +190,13 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=betas, eps=eps, w
 # Define loss function
 criterion = (
     torch.nn.MSELoss() if task_name == "stsb" else 
-    torch.nn.CrossEntropyLoss(torch.tensor([6.0, 1.0], device=device)) if task_name == "cola" else
+    # torch.nn.CrossEntropyLoss(torch.tensor([6.0, 1.0], device=device)) if task_name == "cola" else
     torch.nn.CrossEntropyLoss() 
 )
 
 # Config tensorboard and directory for logging/saving
-writer = SummaryWriter(f"runs/bert-110M-wikipedia-en-glue-{task_name}")
-out_dir = f"models/bert-110M-wikipedia-en-glue-{task_name}"
+writer = SummaryWriter(f"runs/bert-{args.bert_config}-wikipedia-en-glue-{task_name}")
+out_dir = f"models/bert-{args.bert_config}-wikipedia-en-glue-{task_name}"
 os.makedirs(out_dir, exist_ok=True)
 
 # Train

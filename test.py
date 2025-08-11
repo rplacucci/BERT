@@ -2,6 +2,7 @@
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import argparse
+import yaml
 import time
 import pandas as pd
 import torch
@@ -18,6 +19,13 @@ from transformers import BertTokenizer
 
 # Config argparser
 parser = argparse.ArgumentParser(description="Fine-tune BERT on a GLUE task with distributed training")
+
+parser.add_argument(
+    "--bert_config",
+    type=str,
+    default="tiny",
+    help="Size of BERT model (tiny, mini, small, medium, base, or large)"
+)
 
 parser.add_argument(
     "--task_name",
@@ -56,17 +64,11 @@ vocab_size = tokenizer.vocab_size
 max_len = 512
 batch_size = 32
 
-# Load model
-bert = BERT(
-    vocab_size=vocab_size,
-    n_segments=2,
-    max_len=512,
-    attn_heads=12,
-    embed_size=768,
-    ff_size=3072,
-    n_layers=12,
-    dropout=0.1
-)
+# Load finetuned model
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+bert = BERT(vocab_size=vocab_size, **config[args.bert_config])
 
 model = BERT4GLUE(
     bert=bert,
@@ -81,7 +83,7 @@ print(f"Initialized model on {device}")
 time.sleep(0.1)
 
 # Load finetuned weights
-model_dir = f"models/bert-110M-wikipedia-en-glue-{"mnli" if task_name in ("mnli-m", "mnli-mm", "ax") else task_name}"
+model_dir = f"models/bert-{args.bert_config}-wikipedia-en-glue-{"mnli" if task_name in ("mnli-m", "mnli-mm", "ax") else task_name}"
 state_dict = torch.load(os.path.join(model_dir, "model_final.pth"), map_location=device)
 model.load_state_dict(state_dict)
 
@@ -187,7 +189,7 @@ if master_process:
         ]
 
     # Save results to file
-    out_dir = f"submission"
+    out_dir = f"submission-bert-{args.bert_config}"
     os.makedirs(out_dir, exist_ok=True)
     fname = {
         "cola": "CoLA.tsv",

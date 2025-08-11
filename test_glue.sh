@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Default config
+BERT_CONFIG="tiny"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --bert_config)
+            BERT_CONFIG="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$BERT_CONFIG" ]]; then
+    echo "Error: --bert_config argument is required."
+    exit 1
+fi
+
 # List of GLUE tasks to evaluate
 TASKS=(
   cola
@@ -18,13 +40,15 @@ TASKS=(
 
 # Loop over each task and invoke torchrun
 for TASK in "${TASKS[@]}"; do
-  echo "====================================="
-  echo " Running GLUE evaluation on: $TASK"
-  echo "====================================="
-  torchrun --standalone --nproc-per-node=4 test.py --task_name "$TASK"
+  echo "=============================================================="
+  echo " Running GLUE evaluation on $TASK for model BERT-$BERT_CONFIG"
+  echo "=============================================================="
+  torchrun --standalone --nproc-per-node=4 test.py --task_name "$TASK" --bert_config "$BERT_CONFIG"
 done
 
 # Once all tasks are done, zip up the submission folder
-echo "Zipping submission directory…"
-zip -r submission.zip submission
-echo "Created submission.zip"
+SUBMISSION_DIR="submission-bert-$BERT_CONFIG"
+
+echo "Zipping submission directory: $SUBMISSION_DIR"
+zip -r "${SUBMISSION_DIR}.zip" "$SUBMISSION_DIR"
+echo "Created ${SUBMISSION_DIR}.zip"
