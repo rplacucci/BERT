@@ -1,5 +1,11 @@
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+import warnings
+warnings.filterwarnings("ignore", message=".*overflowing tokens are not returned.*")
+from transformers.utils import logging as hf_logging
+hf_logging.set_verbosity_error() 
+
 import time
 import argparse
 import subprocess
@@ -28,13 +34,19 @@ distributed = int(os.environ.get("RANK", -1)) != -1
 
 if distributed:
     assert torch.cuda.is_available(), "CUDA required for distributed processing."
-    init_process_group(backend="nccl")
     rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     master_process = rank == 0
     device = f"cuda:{local_rank}"
     torch.cuda.set_device(device)
+    init_process_group(
+        backend="nccl",
+        init_method="env://",
+        world_size=world_size,
+        rank=rank,
+        device_id=local_rank,
+    )
 else:
     rank = 0
     local_rank = 0
@@ -81,9 +93,9 @@ print(f"Initialized model on {device}")
 time.sleep(0.5)
 
 # Calculate gradient accumulation steps
-batch_size = 32
+batch_size = 64
 max_len = 512
-total_batch_size = 256 * 512
+total_batch_size = 256 * 512 * 2
 assert total_batch_size % (batch_size * max_len * world_size) == 0, "total_batch_size must be divisible by (batch_size * max_len * world_size)"
 grad_accum_steps = total_batch_size // (batch_size * max_len * world_size)
 if master_process:
@@ -91,14 +103,17 @@ if master_process:
 
 # Load dev dataset
 login(token=args.hf_token)
+time.sleep(5)
 wikipedia = load_dataset("rplacucci/wiki-sentences", split="train")
-time.sleep(0.5)
+time.sleep(5)
+
+if distributed:
+    dist.barrier()
 
 dataset = WikipediaDataset(
     dataset=wikipedia,
     tokenizer=tokenizer,
     max_len=max_len,
-    world_size=world_size
 )
 
 sampler = DistributedSampler(

@@ -153,7 +153,7 @@ class BERTLM(nn.Module):
         super().__init__()
         self.bert = bert
         # Pass the token embedding layer to MLM head for weight tying
-        self.mlm = MaskedLanguageModel(bert.embedding.token, vocab_size)
+        self.mlm = MaskedLanguageModel(bert.embedding.tok_embed, vocab_size)
         self.nsp = NextSentencePrediction(bert.embed_size)
 
     def forward(self, input_ids, seg_ids, attention_mask=None):
