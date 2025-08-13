@@ -150,7 +150,7 @@ criterion = torch.nn.NLLLoss(ignore_index=-100)
 
 # Config tensorboard and directories for logging/saving
 out_dir = f"./models/bert-{args.bert_config}-wikipedia-en"
-run_dir = f"./runs/bert-{args.bert_config}-wikipedia-en-v2"
+run_dir = f"./runs/bert-{args.bert_config}-wikipedia-en"
 pfs_dir = None  # "/lambda/nfs/lambda-fs/"
 
 if master_process:
@@ -213,6 +213,19 @@ if os.path.isfile(checkpoint_path):
             dist.broadcast(param.data, src=0)
         dist.barrier()
 
+    sampler.set_epoch(start_step)
+
+    # Re-initialize dataloader and dataiter after restoring
+    dataloader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        sampler=sampler,
+        num_workers=0,
+        prefetch_factor=None
+    )
+
+    dataiter = iter(dataloader)
+
 # Train
 ckpt_steps = 1000
 save_steps = 100000
@@ -268,6 +281,9 @@ for step in range(start_step, total_steps):
         print(f"(train) step: {step:6d}/{total_steps} | loss: {loss:.4f} | lr: {lr:.4e} | norm: {norm:.4f} | tok/sec: {tokens_per_sec:.0f}")
         writer.add_scalar("loss", loss, step)
         writer.add_scalar("lr", lr, step)
+
+    if distributed:
+        dist.barrier()
     
     # checkpoint model
     if step % ckpt_steps == 0 and step > 0:
