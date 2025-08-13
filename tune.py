@@ -12,7 +12,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
 from model import BERT, BERTLM, BERT4GLUE
-from scheduler import LinearLRwithWarmup
+from scheduler import LinearWarmupLinearDecay
 import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -118,7 +118,7 @@ print(f"Initialized model on {device}")
 time.sleep(0.1)
 
 # Config training hyperparameters
-batch_size = 32
+batch_size = 64
 max_len = 512
 
 # Load dev dataset and metric

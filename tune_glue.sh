@@ -26,8 +26,7 @@ fi
 # List of GLUE tasks to evaluate
 TASKS=(
   cola
-  mnli-m
-  mnli-mm
+  mnli
   mrpc
   qqp
   qnli
@@ -35,7 +34,6 @@ TASKS=(
   sst2
   stsb
   wnli
-  ax
 )
 
 # Loop over each task and invoke torchrun
