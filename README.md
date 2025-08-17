@@ -84,26 +84,35 @@ torchrun --standalone --nproc-per-node 4 tune.py --bert_config tiny --task_name 
 ```
 
 Alternatively, fine-tune on all GLUE tasks:
+
 a) With constant learning rate and batch size
 ```bash
+mv ./scripts/run_tune_glue.sh ./run_tune_glue.sh
 chmod +x run_tune_glue.sh
-./run_tune_glue.sh
+./run_tune_glue.sh --bert_config tiny
 ```
 
 b) Across a range of learning rates and batch sizes
 ```bash
+mv ./scripts/run_tune_glue_params.sh ./run_tune_glue_params.sh
 chmod +x run_tune_glue_params.sh
-./run_tune_glue_params.sh
+./run_tune_glue_params.sh --bert_config tiny
 ```
 ### Evaluation
 
-Evaluate on all GLUE tasks:
+Evaluate on a single GLUE task (e.g., QQP):
 ```bash
-chmod +x run_test_glue.sh
-./run_test_glue.sh
+torchrun --standalone --nproc-per-node 4 test.py --bert_config tiny --task_name qqp
 ```
 
-Results for each task will be saved in tab-delimited files `./submission-bert-{bert_config}/{task_name}.tsv`, and the entire submission will be zipped in a folder `./submission-bert-{bert_config}.zip` that can be uploaded to https://gluebenchmark.com/.
+Alternatively, evaluate on all GLUE tasks:
+```bash
+mv ./scripts/run_test_glue.sh ./run_test_glue.sh
+chmod +x run_test_glue.sh
+./run_test_glue.sh --bert_config tiny
+```
+
+Results for each task will be saved in tab-delimited files `./submission-bert-tiny/{task_name}.tsv`, and the entire submission will be zipped in a folder `./submission-bert-tiny.zip` that can be uploaded to https://gluebenchmark.com/.
 ### Key options
 
 Adjust the pre-training and fine-tuning routines with the following parameters according to your computational resources:
@@ -123,7 +132,7 @@ The combined MLM + NSP loss follows the expected learning dynamics:
 - The model undergoes a steep decline in the first ~100k steps as it rapidly acquires shallow lexical and syntactic regularities. 
 - By ~200k steps, the rate of improvement slows markedly, and the loss plateaus near 4, consistent with prior BERT results and suggesting that further reductions would require additional training data (e.g., BookCorpus) or longer pretraining schedules.
 
-![loss curve](./loss.png)
+![loss curve](./outputs/loss.png)
 
 **Note:** Pre-training took ~3.5 days on 4 NVIDIA A40 GPUs.
 ### GLUE Benchmark
