@@ -39,8 +39,15 @@ parser.add_argument(
 parser.add_argument(
     "--lr",
     type=float,
-    default=2e-5,
+    default=1e-4,
     help="Constant learning rate for the optimizer"
+)
+
+parser.add_argument(
+    "--batch_size",
+    type=float,
+    default=32,
+    help="Batch size to tune with"
 )
 
 parser.add_argument(
@@ -52,8 +59,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-# Set task name
+# Set task name and BERT config
 task_name = args.task_name
+bert_config = args.bert_config
 
 # Initialize distributed processing
 distributed = int(os.environ.get("RANK", -1)) != -1
@@ -89,14 +97,14 @@ if master_process:
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-bert = BERT(vocab_size=vocab_size, **config[args.bert_config])
+bert = BERT(vocab_size=vocab_size, **config[bert_config])
 bertlm = BERTLM(bert, vocab_size)
 
-model_dir = f"./models/bert-{args.bert_config}-wikipedia-en"
-checkpoint_path = os.path.join(model_dir, "ckpt.pt") 
+model_dir = f"./models/bert-{bert_config}-wikipedia-en"
+checkpoint_path = os.path.join(model_dir, "model_final.pth") 
 
 ckpt = torch.load(checkpoint_path, map_location=device)
-bertlm.load_state_dict(ckpt["model"])
+bertlm.load_state_dict(ckpt)
 bert.load_state_dict(bertlm.bert.state_dict())
 
 # Config model
@@ -118,7 +126,7 @@ print(f"Initialized model on {device}")
 time.sleep(0.1)
 
 # Config training hyperparameters
-batch_size = 64
+batch_size = int(args.batch_size)
 max_len = 512
 
 # Load dev dataset and metric
@@ -195,8 +203,8 @@ criterion = (
 )
 
 # Config tensorboard and directory for logging/saving
-writer = SummaryWriter(f"runs/bert-{args.bert_config}-wikipedia-en-glue-{task_name}")
-out_dir = f"models/bert-{args.bert_config}-wikipedia-en-glue-{task_name}"
+writer = SummaryWriter(f"runs/{task_name}/bert-{bert_config}-wikipedia-en-glue-{task_name}-lr-{lr:.0e}-bs-{batch_size}")
+out_dir = f"models/{task_name}/bert-{bert_config}-wikipedia-en-glue-{task_name}-lr-{lr:.0e}-bs-{batch_size}"
 os.makedirs(out_dir, exist_ok=True)
 
 # Train

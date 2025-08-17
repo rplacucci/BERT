@@ -21,14 +21,15 @@ import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
-from huggingface_hub import login
 
-# torchrun --standalone --nproc-per-node=4 train.py
+# torchrun --standalone --nproc-per-node=4 train.py --bert_config tiny --batch_size 64 --max_len 512
 
 # Config argparser
 parser = argparse.ArgumentParser(description="Pre-train BERT on Wikipedia with distributed processes")
 parser.add_argument("--bert_config", type=str, default="tiny", help="Size of BERT model (tiny, mini, small, medium, base, or large)")
-parser.add_argument("--hf_token", type=str, help="Hugging Face token to access private dataset")
+parser.add_argument("--batch_size", type=int, default=64, help="Number of training samples per batch (8, 16, 32, 64, 128)")
+parser.add_argument("--max_len", type=int, default=512, help="Maximum token sequence length (256, 512, 1024)")
+parser.add_argument("--pfs_dir", type=str, default=None, help="Path to persistent file storage system if using cloud service")
 args = parser.parse_args()
 
 # Initialize distributed processing
@@ -65,6 +66,7 @@ torch.set_float32_matmul_precision("high")
 # Choose tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 vocab_size = tokenizer.vocab_size
+print("Vocab size:", vocab_size)
 
 # Config model
 with open("config.yaml", "r") as f:
@@ -89,8 +91,8 @@ print(f"Initialized model on {device}")
 time.sleep(0.5)
 
 # Calculate gradient accumulation steps
-batch_size = 64
-max_len = 512
+batch_size = args.batch_size
+max_len = args.max_len
 total_batch_size = 256 * 512
 assert total_batch_size % (batch_size * max_len * world_size) == 0, "total_batch_size must be divisible by (batch_size * max_len * world_size)"
 grad_accum_steps = total_batch_size // (batch_size * max_len * world_size)
@@ -98,8 +100,6 @@ if master_process:
     print("Gradient accumulation steps set to", grad_accum_steps)
 
 # Load dev dataset
-login(token=args.hf_token)
-time.sleep(5)
 wikipedia = load_dataset("rplacucci/wiki-sentences", split="train")
 time.sleep(5)
 
@@ -151,7 +151,7 @@ criterion = torch.nn.NLLLoss(ignore_index=-100)
 # Config tensorboard and directories for logging/saving
 out_dir = f"./models/bert-{args.bert_config}-wikipedia-en"
 run_dir = f"./runs/bert-{args.bert_config}-wikipedia-en"
-pfs_dir = None  # "/lambda/nfs/lambda-fs/"
+pfs_dir = args.pfs_dir  # path to persistent storage (if using cloud service)
 
 if master_process:
     writer = SummaryWriter(run_dir)
