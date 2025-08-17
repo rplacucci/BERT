@@ -44,7 +44,7 @@ The original implementation of BERT uses a document-level corpus composed of the
 
 Fine-tuning involves adding lightweight, **task-specific heads** on top of BERT while training the entire network **end-to-end**. The `[CLS]` representation is used for sentence-level tasks (e.g., sentiment, entailment), while token-level outputs can be used for tagging tasks.
 
-The original implementation of BERT if fine-tuned and evaluated across a range of downstream natural language processing tasks. Here we focus on the **General Language Understanding Evaluation (GLUE) benchmark**: a collection of natural language understanding tasks that involve single-sentence or sentence pair classification.
+The original implementation of BERT is fine-tuned and evaluated across a range of downstream natural language processing tasks. Here we focus on the **General Language Understanding Evaluation (GLUE) benchmark**: a collection of natural language understanding tasks that involve single-sentence or sentence pair classification.
 
 **Note:** The GLUE dataset is hosted by 🤗 at https://huggingface.co/datasets/nyu-mll/glue.
 ## ⚙️ Installation
