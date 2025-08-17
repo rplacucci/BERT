@@ -123,7 +123,7 @@ The combined MLM + NSP loss follows the expected learning dynamics:
 - The model undergoes a steep decline in the first ~100k steps as it rapidly acquires shallow lexical and syntactic regularities. 
 - By ~200k steps, the rate of improvement slows markedly, and the loss plateaus near 4, consistent with prior BERT results and suggesting that further reductions would require additional training data (e.g., BookCorpus) or longer pretraining schedules.
 
-![loss curve](./images/loss.png)
+![loss curve](./loss.png)
 
 **Note:** Pre-training took ~3.5 days on 4 NVIDIA A40 GPUs.
 ### GLUE Benchmark
