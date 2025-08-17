@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from embeddings import BERTEmbedding
-from attention import MultiHeadAttention
-from utils import SublayerConnection, PositionWiseFeedForward
+from src.embeddings import BERTEmbedding
+from src.attention import MultiHeadAttention
+from src.utils import SublayerConnection, PositionWiseFeedForward
 
 class EncoderLayer(nn.Module):
     """

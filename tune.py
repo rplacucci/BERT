@@ -7,12 +7,12 @@ import torch
 import evaluate
 import itertools
 from transformers import BertTokenizer
-from dataset import GLUEDataset
+from src.dataset import GLUEDataset
 from datasets import load_dataset
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
-from model import BERT, BERTLM, BERT4GLUE
-from scheduler import LinearWarmupLinearDecay
+from src.model import BERT, BERTLM, BERT4GLUE
+from src.scheduler import LinearWarmupLinearDecay
 import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP

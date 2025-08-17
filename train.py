@@ -10,9 +10,9 @@ import time
 import yaml
 import argparse
 import subprocess
-from model import BERT, BERTLM
-from scheduler import LinearWarmupLinearDecay
-from dataset import WikipediaDataset
+from src.model import BERT, BERTLM
+from src.scheduler import LinearWarmupLinearDecay
+from src.dataset import WikipediaDataset
 from datasets import load_dataset
 from torch.utils.data import DataLoader, DistributedSampler
 import torch

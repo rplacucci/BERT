@@ -9,8 +9,8 @@ import torch
 import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model import BERT, BERT4GLUE
-from dataset import GLUEDataset
+from src.model import BERT, BERT4GLUE
+from src.dataset import GLUEDataset
 from datasets import load_dataset
 from torch.utils.data import DataLoader, DistributedSampler
 from transformers import BertTokenizer
